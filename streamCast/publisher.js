@@ -18,8 +18,8 @@ async function main() {
   const sdk = new SDK({ public: publicClient, wallet: walletClient })
 
   // 1️⃣ Define schema
-  const somniaPathSchema = `address playerAddress, uint256 levelCompleted, uint256 startTime, uint256 endTime`
-  const schemaId = await sdk.streams.computeSchemaId(somniaPathSchema)
+  const createEventSchema = `address creatorAddress, string eventTitle, string eventDescription, string eventStatus, string eventWinner, string[] eventOptions`
+  const schemaId = await sdk.streams.computeSchemaId(createEventSchema)
   console.log("Schema ID:", schemaId)
 
   // 2️⃣ Safer schema registration
@@ -29,8 +29,8 @@ async function main() {
     const txHash = await sdk.streams.registerDataSchemas(
       [
         {
-          id: 'somniaDataPath',
-          schema: somniaPathSchema,
+          id: 'createEventSchema1',
+          schema: createEventSchema,
           parentSchemaId: zeroBytes32
         },
       ],
@@ -53,21 +53,23 @@ async function main() {
   }
 
   // 3️⃣ Publish messages
-  const encoder = new SchemaEncoder(somniaPathSchema)
+  const encoder = new SchemaEncoder(createEventSchema)
   let count = 0
 
   setInterval(async () => {
     count++
     const data = encoder.encodeData([
-      { name: 'playerAddress', value: `${playerWallet}`, type: 'address' },
-      { name: 'levelCompleted', value: BigInt(count), type: 'uint256' },
-      { name: 'startTime', value: BigInt(Math.floor(Date.now())), type: 'uint256' },
-      { name: 'endTime', value: BigInt(Math.floor(Date.now() + 7)), type: 'uint256' },
+      { name: 'creatorAddress', value: `${playerWallet}`, type: 'address' },
+      { name: 'eventTitle', value: `Donald Trump will become president the second time`, type: 'string' },
+      { name: 'eventDescription', value: `American Politics`, type: 'string' },
+      { name: 'eventStatus', value: `active`, type: 'string' },
+      { name: 'eventWinner', value: `true`, type: 'string' },
+      { name: 'eventOptions', value: ['true', 'false'], type: 'string[]' },
     ])
 
-    const dataStreams = [{ id: toHex(`somniaPath-${count}`, { size: 32 }), schemaId, data }]
+    const dataStreams = [{ id: toHex(`streamCast-${count}`, { size: 32 }), schemaId, data }]
     const tx = await sdk.streams.set(dataStreams)
-    console.log(`✅ Published: somniaPath game session details #${count} (Tx: ${tx})`)
+    console.log(`✅ Published: streamCast event prediction data #${count} (Tx: ${tx})`)
   }, 3000)
 }
 

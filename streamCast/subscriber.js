@@ -8,28 +8,30 @@ async function main() {
   const publicClient = createPublicClient({ chain: dreamChain, transport: http() });
   const sdk = new SDK({ public: publicClient });
 
-  const somniaPathSchema = `address playerAddress, uint256 levelCompleted, uint256 startTime, uint256 endTime`;
-  const schemaId = await sdk.streams.computeSchemaId(somniaPathSchema);
+  const createEventSchema = `address creatorAddress, string eventTitle, string eventDescription, string eventStatus, string eventWinner, string[] eventOptions`;
+  const schemaId = await sdk.streams.computeSchemaId(createEventSchema);
 
-  const schemaEncoder = new SchemaEncoder(somniaPathSchema);
+  const schemaEncoder = new SchemaEncoder(createEventSchema);
   const seen = new Set();
 
   setInterval(async () => {
     const allData = await sdk.streams.getAllPublisherDataForSchema(schemaId, publisherWallet);
     for (const dataItem of allData) {
-      let playerAddress = "", levelCompleted = "", startTime = "", endTime = "";
+      let creatorAddress = "", eventTitle = "", eventDescription = "", eventStatus = "", eventWinner = "", eventOptions = "";
       for (const field of dataItem) {
         const val = field.value?.value ?? field.value;
-        if (field.name === "playerAddress") playerAddress = val.toString();
-        if (field.name === "levelCompleted") levelCompleted = val.toString();
-        if (field.name === "startTime") startTime = val.toString();
-        if (field.name === "endTime") endTime = val.toString();
+        if (field.name === "creatorAddress") creatorAddress = val.toString();
+        if (field.name === "eventTitle") eventTitle = val;
+        if (field.name === "eventDescription") eventDescription = val;
+        if (field.name === "eventStatus") eventStatus = val;
+        if (field.name === "eventWinner") eventWinner = val;
+        if (field.name === "eventOptions") eventOptions = val;
       }
 
-      const id = `${playerAddress}-${levelCompleted}`;
+      const id = `${creatorAddress}-${eventTitle}${Date.now()}`;
       if (!seen.has(id)) {
         seen.add(id);
-        console.log(`🆕 ${playerAddress} completed level ${levelCompleted} at ${endTime - startTime}`);
+        console.log(`🆕 ${creatorAddress} created prediction event named ${eventTitle} with options ${eventOptions}`);
       }
     }
   }, 3000);
