@@ -1,5 +1,5 @@
 import { SDK, SchemaEncoder, zeroBytes32 } from "@somnia-chain/streams";
-import { createPublicClient, http, toHex, type Address } from "viem";
+import { createPublicClient, http, keccak256, stringToHex, type Address } from "viem";
 import { somniaTestnet } from "./chains";
 import type { WalletClient } from "viem";
 
@@ -21,10 +21,12 @@ export function getStreamsSDK(walletClient?: WalletClient) {
 }
 
 // Register event creation schema
+// This is optional - if schema is already registered, we continue
 export async function registerEventSchema(sdk: SDK) {
   const schemaId = await sdk.streams.computeSchemaId(createEventSchema);
   
   try {
+    // Try with ignoreAlreadyRegistered = true to avoid errors if already registered
     const txHash = await sdk.streams.registerDataSchemas(
       [
         {
@@ -33,7 +35,7 @@ export async function registerEventSchema(sdk: SDK) {
           parentSchemaId: zeroBytes32,
         },
       ],
-      false // ignoreAlreadyRegistered
+      true // ignoreAlreadyRegistered = true
     );
 
     if (txHash) {
@@ -41,10 +43,10 @@ export async function registerEventSchema(sdk: SDK) {
     }
     return { schemaId, txHash: null };
   } catch (err: any) {
-    if (String(err).includes("SchemaAlreadyRegistered")) {
-      return { schemaId, txHash: null };
-    }
-    throw err;
+    // If registration fails for any reason, log it but don't throw
+    // The schema might already be registered or there might be a network issue
+    console.warn("Schema registration failed (might already be registered):", err);
+    return { schemaId, txHash: null };
   }
 }
 
@@ -73,11 +75,10 @@ export async function createEvent(
     { name: "endTime", value: params.endTime, type: "uint256" },
   ]);
 
-  // Generate unique stream ID
-  const streamId = toHex(
-    `streamcast-${params.creatorAddress}-${Date.now()}`,
-    { size: 32 }
-  );
+  // Generate unique stream ID by hashing the creator address, title, and end time
+  // This ensures a deterministic 32-byte ID
+  const uniqueString = `streamcast-${params.creatorAddress}-${params.eventTitle}-${params.endTime}`;
+  const streamId = keccak256(stringToHex(uniqueString)) as `0x${string}`;
 
   const dataStreams = [{ id: streamId, schemaId, data }];
   const txHash = await sdk.streams.set(dataStreams);

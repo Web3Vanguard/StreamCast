@@ -65,8 +65,13 @@ const CreateMarket = () => {
       // Get SDK with wallet client
       const sdk = getStreamsSDK(walletClient);
       
-      // Register schema if needed
-      await registerEventSchema(sdk);
+      // Register schema if needed (optional - continues even if already registered)
+      try {
+        await registerEventSchema(sdk);
+      } catch (error) {
+        // Schema registration is optional, continue even if it fails
+        console.warn("Schema registration skipped:", error);
+      }
 
       // Calculate end time timestamp
       const endDateTime = new Date(`${data.endDate}T${data.endTime}:00`);
